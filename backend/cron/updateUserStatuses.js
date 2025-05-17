@@ -83,8 +83,24 @@ const updateUserStatuses = async () => {
 
       if (status !== "frozen") {
         updateData.daysLeft = countdown;
-        updateData.status =
+        const newStatus =
           countdown < -3 ? "inactive" : countdown < 0 ? "expired" : status;
+
+        // Create notification if status changes to expired or inactive
+        if (
+          newStatus !== status &&
+          (newStatus === "expired" || newStatus === "inactive")
+        ) {
+          await prisma.notification.create({
+            data: {
+              userId: id,
+              name: "Membership Status Update",
+              description: `${fullName}'s membership has been marked as ${newStatus}.`,
+            },
+          });
+        }
+
+        updateData.status = newStatus;
       }
 
       await prisma.user.update({

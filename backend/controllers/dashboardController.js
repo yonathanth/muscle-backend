@@ -51,67 +51,124 @@ const getPendingMembers = asyncHandler(async (req, res) => {
 });
 
 const getPieChartData = asyncHandler(async (req, res) => {
-  // Fetch all service categories
-  const allCategories = await prisma.service.findMany({
-    select: {
-      category: true, // Only fetch category names
-    },
-    distinct: ["category"], // Ensure no duplicate categories
-  });
+  const { type = "membership" } = req.query;
 
-  // Fetch user counts grouped by service category
-  const categoryBreakdown = await prisma.user.groupBy({
-    by: ["serviceId"],
-    _count: {
-      id: true, // Count users for each service
-    },
-    where: {
-      role: "user",
-
-      service: {
-        isNot: null, // Ensure the user has a valid service
+  if (type === "membership") {
+    // Fetch all service categories
+    const allCategories = await prisma.service.findMany({
+      select: {
+        category: true,
       },
-    },
-  });
+      distinct: ["category"],
+    });
 
-  // Fetch all services with their categories and IDs
-  const services = await prisma.service.findMany({
-    select: {
-      id: true,
-      category: true,
-    },
-  });
+    // Fetch user counts grouped by service category
+    const categoryBreakdown = await prisma.user.groupBy({
+      by: ["serviceId"],
+      _count: {
+        id: true,
+      },
+      where: {
+        role: "user",
+        service: {
+          isNot: null,
+        },
+      },
+    });
 
-  // Map service IDs to categories and aggregate user counts
-  const categoryCounts = services.reduce((acc, service) => {
-    const serviceGroup = categoryBreakdown.find(
-      (group) => group.serviceId === service.id
+    // Fetch all services with their categories and IDs
+    const services = await prisma.service.findMany({
+      select: {
+        id: true,
+        category: true,
+      },
+    });
+
+    // Map service IDs to categories and aggregate user counts
+    const categoryCounts = services.reduce((acc, service) => {
+      const serviceGroup = categoryBreakdown.find(
+        (group) => group.serviceId === service.id
+      );
+      acc[service.category] =
+        (acc[service.category] || 0) + (serviceGroup?._count.id || 0);
+      return acc;
+    }, {});
+
+    // Include categories with zero counts
+    const finalCounts = allCategories.reduce((acc, category) => {
+      acc[category.category] = categoryCounts[category.category] || 0;
+      return acc;
+    }, {});
+
+    // Format response
+    const breakdown = Object.entries(finalCounts).map(
+      ([category, memberCount]) => ({
+        category,
+        memberCount,
+      })
     );
-    acc[service.category] =
-      (acc[service.category] || 0) + (serviceGroup?._count.id || 0);
-    return acc;
-  }, {});
 
-  // Include categories with zero counts
-  const finalCounts = allCategories.reduce((acc, category) => {
-    acc[category.category] = categoryCounts[category.category] || 0;
-    return acc;
-  }, {});
+    res.status(200).json({
+      success: true,
+      data: {
+        breakdown,
+      },
+    });
+  } else if (type === "status") {
+    // Get all possible statuses
+    const statuses = [
+      "active",
+      "inactive",
+      "dormant",
+      "frozen",
+      "expired",
+      "pending",
+    ];
 
-  // Format response
-  const breakdown = Object.entries(finalCounts).map(
-    ([category, memberCount]) => ({
-      category,
-      memberCount,
-    })
-  );
+    // Fetch user counts grouped by status
+    const statusBreakdown = await prisma.user.groupBy({
+      by: ["status"],
+      _count: {
+        id: true,
+      },
+      where: {
+        role: "user",
+      },
+    });
 
-  res.status(200).json({
-    success: true,
-    data: {
-      breakdown,
-    },
-  });
+    // Create a map of status counts
+    const statusCounts = statusBreakdown.reduce((acc, group) => {
+      acc[group.status] = group._count.id;
+      return acc;
+    }, {});
+
+    // Include all statuses with zero counts if they don't exist
+    const finalCounts = statuses.reduce((acc, status) => {
+      acc[status] = statusCounts[status] || 0;
+      return acc;
+    }, {});
+
+    // Format response
+    const breakdown = Object.entries(finalCounts).map(
+      ([status, memberCount]) => ({
+        category: status.charAt(0).toUpperCase() + status.slice(1),
+        memberCount,
+      })
+    );
+
+    res.status(200).json({
+      success: true,
+      data: {
+        breakdown,
+      },
+    });
+  } else {
+    res.status(400).json({
+      success: false,
+      message:
+        "Invalid type parameter. Must be either 'membership' or 'status'",
+    });
+  }
 });
 
 const getAttendanceData = asyncHandler(async (req, res) => {
@@ -226,10 +283,59 @@ const getAttendanceData = asyncHandler(async (req, res) => {
     },
   });
 });
+
+const getNotifications = asyncHandler(async (req, res) => {
+  try {
+    const notifications = await prisma.notification.findMany({
+      orderBy: {
+        createdAt: "desc",
+      },
+      take: 10, // Get last 10 notifications
+    });
+
+    res.status(200).json({
+      success: true,
+      data: notifications,
+    });
+  } catch (error) {
+    console.error("Error fetching notifications:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching notifications",
+    });
+  }
+});
+
+const markNotificationsAsRead = asyncHandler(async (req, res) => {
+  try {
+    await prisma.notification.updateMany({
+      where: {
+        read: false,
+      },
+      data: {
+        read: true,
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Notifications marked as read",
+    });
+  } catch (error) {
+    console.error("Error marking notifications as read:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error marking notifications as read",
+    });
+  }
+});
+
 // Export all helper functions
 module.exports = {
   getCardData,
   getPieChartData,
   getPendingMembers,
   getAttendanceData,
+  getNotifications,
+  markNotificationsAsRead,
 };

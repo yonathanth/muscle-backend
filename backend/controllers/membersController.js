@@ -74,15 +74,55 @@ const getUserDetails = asyncHandler(async (req, res) => {
   });
 });
 
-// Get all users
+// Get all users with pagination and search
 const getUsers = asyncHandler(async (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = 40;
+  const search = req.query.search || "";
+  const status = req.query.status || "";
+  const service = req.query.service || "";
+  const sortBy = req.query.sortBy || "createdAt"; // Default sort by registration date
+  const sortOrder = req.query.sortOrder || "desc"; // Default sort order descending
+
+  // Build the where clause for filtering
+  const where = {
+    role: "user",
+    ...(search && {
+      OR: [
+        { fullName: { contains: search } },
+        { phoneNumber: { contains: search } },
+        { email: { contains: search } },
+      ],
+    }),
+    ...(status && { status }),
+    ...(service && { serviceId: service }),
+  };
+
+  // Get total count for pagination
+  const total = await prisma.user.count({ where });
+
+  // Build the orderBy clause
+  let orderBy = {};
+  switch (sortBy) {
+    case "name":
+      orderBy = { fullName: sortOrder };
+      break;
+    case "daysLeft":
+      orderBy = { daysLeft: sortOrder };
+      break;
+    case "registrationDate":
+      orderBy = { createdAt: sortOrder };
+      break;
+    default:
+      orderBy = { createdAt: "desc" };
+  }
+
+  // Get paginated users
   const users = await prisma.user.findMany({
-    orderBy: {
-      createdAt: "desc",
-    },
+    where,
+    orderBy,
     include: {
       service: true,
-
       exercisesCompleted: true,
       attendance: true,
       workouts: true,
@@ -90,8 +130,33 @@ const getUsers = asyncHandler(async (req, res) => {
       notifications: true,
       mealPlans: true,
     },
+    skip: (page - 1) * limit,
+    take: limit,
   });
-  res.status(200).json({ success: true, data: { users } });
+
+  // Get all services for filter dropdown
+  const services = await prisma.service.findMany({
+    select: {
+      id: true,
+      name: true,
+    },
+  });
+
+  res.status(200).json({
+    success: true,
+    data: {
+      users,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+      filters: {
+        services,
+      },
+    },
+  });
 });
 
 const addUser = [
