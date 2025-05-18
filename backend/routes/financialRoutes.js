@@ -1,12 +1,15 @@
 const express = require("express");
+const router = express.Router();
+
 const {
   getTransactions,
   addTransaction,
   deleteTransaction,
   updateTransaction,
 } = require("../controllers/financialController");
+const { authenticate, authorize } = require("../middleware/authMiddleware");
 
-const router = express.Router();
+router.use(authenticate, authorize(["admin", "root"]));
 
 router.get("/", getTransactions);
 

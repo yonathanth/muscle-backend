@@ -25,14 +25,13 @@ const clearDirectory = (directory) => {
         return reject(err);
       }
       Promise.all(
-          files.map((file) => fs.promises.unlink(path.join(directory, file)))
+        files.map((file) => fs.promises.unlink(path.join(directory, file)))
       )
-          .then(() => resolve())
-          .catch((err) => reject(err));
+        .then(() => resolve())
+        .catch((err) => reject(err));
     });
   });
 };
-
 
 // Middleware to clear directory before uploading
 const clearAndUpload = async (req, res, next) => {
@@ -42,8 +41,8 @@ const clearAndUpload = async (req, res, next) => {
   } catch (err) {
     console.error("Error clearing directory:", err.message);
     return res
-        .status(500)
-        .json({ success: false, message: "Failed to clear directory." });
+      .status(500)
+      .json({ success: false, message: "Failed to clear directory." });
   }
 };
 
@@ -53,7 +52,7 @@ const upload = multer({
   fileFilter: (req, file, cb) => {
     const fileTypes = /jpeg|jpg|png|gif/;
     const extname = fileTypes.test(
-        path.extname(file.originalname).toLowerCase()
+      path.extname(file.originalname).toLowerCase()
     );
     const mimeType = fileTypes.test(file.mimetype);
     if (mimeType && extname) {
@@ -95,7 +94,7 @@ const addAdvertisement = asyncHandler(async (req, res) => {
       });
     }
 
-    const formattedSlug = slug.trim().toLowerCase().replace(/\s+/g, '-');
+    const formattedSlug = slug.trim().toLowerCase().replace(/\s+/g, "-");
 
     const fileExtension = path.extname(req.file.originalname).toLowerCase();
 
@@ -134,7 +133,8 @@ const editAdvertisement = asyncHandler(async (req, res) => {
     if (!name && !description && !slug && !req.file) {
       return res.status(400).json({
         success: false,
-        message: "Provide at least one field ('name', 'description', 'slug', or a new image file) to update.",
+        message:
+          "Provide at least one field ('name', 'description', 'slug', or a new image file) to update.",
       });
     }
 
@@ -154,7 +154,7 @@ const editAdvertisement = asyncHandler(async (req, res) => {
       }
 
       // Format the slug
-      const formattedSlug = slug.trim().toLowerCase().replace(/\s+/g, '-');
+      const formattedSlug = slug.trim().toLowerCase().replace(/\s+/g, "-");
 
       // If there's a new file, append its extension to the slug
       if (req.file) {
@@ -206,7 +206,6 @@ const editAdvertisement = asyncHandler(async (req, res) => {
     });
   }
 });
-
 
 module.exports = {
   getAdvertisement,

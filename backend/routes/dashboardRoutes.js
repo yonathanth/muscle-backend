@@ -7,8 +7,10 @@ const {
   getNotifications,
   markNotificationsAsRead,
 } = require("../controllers/dashboardController"); // Update with the correct path to your controller file
+const { authenticate, authorize } = require("../middleware/authMiddleware");
 
 const router = express.Router();
+router.use(authenticate, authorize(["admin", "root", "moderator"]));
 
 router.get("/cardData", getCardData);
 router.get("/pieChartData", getPieChartData);

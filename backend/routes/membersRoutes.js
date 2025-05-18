@@ -1,41 +1,54 @@
 const express = require("express");
 const router = express.Router();
-
-// Assuming you have the authentication and authorization middleware
-const {} = require("../middleware/authMiddleware");
-
-// Assuming you have the authentication and authorization middleware
-const {} = require("../middleware/authMiddleware");
+const { authenticate, authorize } = require("../middleware/authMiddleware");
 
 const {
-    getUsers,
-    addUser,
-    editUser,
-    deleteUser,
-    getUserDetails,
-    updateNotification,
-    addUserMealPlan,
-    addUserWorkout,
-    getMyWorkouts,
-    getMyMealPlans
+  getUsers,
+  addUser,
+  editUser,
+  deleteUser,
+  getUserDetails,
+  updateNotification,
+  addUserMealPlan,
+  addUserWorkout,
+  getMyWorkouts,
+  getMyMealPlans,
 } = require("../controllers/membersController");
 
-// Public route: Get all users (this could bed depending on your needs)
-router.get("/", getUsers);
+// Public route: Get all users (this could be protected depending on your needs)
+router.get(
+  "/",
+  authenticate,
+  authorize(["admin", "moderator", "root"]),
+  getUsers
+);
 
-// only routes: Add, edit, and delete users
-router.post("/", addUser); // Only authenticated  can add users
-router.patch("/:id", editUser); // Ensure user is authenticated and has role
-router.delete("/:id", deleteUser); // Ensure user is authenticated and has role
-router.get("/:id", getUserDetails);
-router.post("/:id/notification", updateNotification)
-router.post("/addUserWorkout/", addUserWorkout);
-router.post("/addUserMealPlan/", addUserMealPlan)
-router.get("/:id/getMyWorkouts", getMyWorkouts);
-router.get("/:id/getMyMealPlans", getMyMealPlans)
-// route: Only accessible to authenticated
-router.get("/en/admin", (req, res) => {
-    res.send("Welcome to the Page! You are an authenticated ");
-});
+// Protected routes: Only authenticated users can access these
+router.post("/", addUser);
+router.patch("/:id", authenticate, editUser);
+router.delete(
+  "/:id",
+  authenticate,
+  authorize(["admin", "moderator", "root"]),
+  deleteUser
+);
+router.get("/:id", authenticate, getUserDetails);
+
+// Protected routes for user-specific actions
+router.patch("/:id/notification", authenticate, updateNotification);
+router.post("/:id/meal-plan", authenticate, addUserMealPlan);
+router.post("/:id/workout", authenticate, addUserWorkout);
+router.get("/:id/workouts", authenticate, getMyWorkouts);
+router.get("/:id/meal-plans", authenticate, getMyMealPlans);
+
+// Admin only route
+router.get(
+  "/en/admin",
+  authenticate,
+  authorize(["admin", "root"]),
+  (req, res) => {
+    res.send("Welcome to the Admin Page! You are an authenticated admin");
+  }
+);
 
 module.exports = router;

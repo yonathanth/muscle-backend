@@ -10,20 +10,42 @@ const getAttendanceByDate = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: "Date is required" });
   }
 
+  // Parse the date and handle timezone consistently
   const parsedDate = new Date(date);
   if (isNaN(parsedDate.getTime())) {
     return res.status(400).json({ message: "Invalid date format" });
   }
 
-  // Get start and end of the day in UTC
-  const startOfDay = new Date(parsedDate.setUTCHours(0, 0, 0, 0));
-  const endOfDay = new Date(parsedDate.setUTCHours(23, 59, 59, 999));
+  // Create date range for the specified date in UTC
+  const startOfDay = new Date(
+    Date.UTC(
+      parsedDate.getUTCFullYear(),
+      parsedDate.getUTCMonth(),
+      parsedDate.getUTCDate(),
+      0,
+      0,
+      0,
+      0
+    )
+  );
+
+  const endOfDay = new Date(
+    Date.UTC(
+      parsedDate.getUTCFullYear(),
+      parsedDate.getUTCMonth(),
+      parsedDate.getUTCDate(),
+      23,
+      59,
+      59,
+      999
+    )
+  );
 
   const attendanceRecords = await prisma.attendance.findMany({
     where: {
       date: {
-        gte: startOfDay, // Greater than or equal to 00:00:00
-        lte: endOfDay, // Less than or equal to 23:59:59
+        gte: startOfDay,
+        lte: endOfDay,
       },
     },
     include: {

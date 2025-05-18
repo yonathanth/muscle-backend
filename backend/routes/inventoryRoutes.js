@@ -7,7 +7,9 @@ const {
   updateProduct,
   deleteProduct,
 } = require("../controllers/inventoryController");
+const { authenticate, authorize } = require("../middleware/authMiddleware");
 
+router.use(authenticate, authorize(["admin", "moderator", "root"]));
 // Routes for product management
 router.get("/", getAllProducts);
 router.get("/:id", getProductById);

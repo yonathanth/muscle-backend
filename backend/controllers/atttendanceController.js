@@ -37,11 +37,41 @@ const fetchUserWithDetails = async (userId) => {
 // Record attendance for a user and update countdown
 const recordAttendance = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
 
+  // Create today's date at the start of the day in UTC
+  // This ensures consistent date handling regardless of server timezone
+  const now = new Date();
+  const today = new Date(
+    Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate(),
+      0,
+      0,
+      0,
+      0
+    )
+  );
+
+  // Check if attendance already exists for today
   const existingAttendance = await prisma.attendance.findFirst({
-    where: { memberId: id, date: today },
+    where: {
+      memberId: id,
+      date: {
+        gte: today,
+        lt: new Date(
+          Date.UTC(
+            now.getUTCFullYear(),
+            now.getUTCMonth(),
+            now.getUTCDate() + 1,
+            0,
+            0,
+            0,
+            0
+          )
+        ),
+      },
+    },
   });
 
   if (existingAttendance) {

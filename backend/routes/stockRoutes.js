@@ -8,7 +8,10 @@ const {
   updateStock,
 } = require("../controllers/stockController");
 
+const { authenticate, authorize } = require("../middleware/authMiddleware");
+
 const router = express.Router();
+router.use(authenticate, authorize(["admin", "root"]));
 
 router.get("/", getStockItems);
 

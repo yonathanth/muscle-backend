@@ -6,7 +6,8 @@ const {
   updateEmployee,
   deleteEmployee,
 } = require("../controllers/employeesController");
-
+const { authenticate, authorize } = require("../middleware/authMiddleware");
+router.use(authenticate, authorize(["admin", "root"]));
 router.get("/", getEmployees);
 router.post("/register", registerEmployee);
 router.route("/:id").delete(deleteEmployee).patch(updateEmployee);
