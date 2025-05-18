@@ -15,8 +15,8 @@ router.get("/", getServices);
 router.post("/", authenticate, authorize(["admin", "root"]), addService);
 router.post(
   "/bulk",
-  authenticate,
-  authorize(["admin", "root"]),
+  // authenticate,
+  // authorize(["admin", "root"]),
   addMultipleServices
 );
 router.patch("/:id", authenticate, authorize(["admin", "root"]), editService);
