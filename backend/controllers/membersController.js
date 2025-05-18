@@ -180,7 +180,7 @@ const addUser = [
       freezeDate,
       serviceId,
       password,
-      role,
+
       workouts,
       mealPlans,
       exercisesCompleted,
