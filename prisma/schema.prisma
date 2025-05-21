@@ -139,6 +139,7 @@ model User {
   subscriptionRequests SubscriptionRequest[]
   profileImageUrl      String?
   healthCondition      HealthCondition?
+  fingerprintTemplate  String? @db.Text
   // Define the relation here without `fields` or `references`
   workouts             UserWorkout[]
   mealPlans            UserMealPlan[]

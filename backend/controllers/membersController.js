@@ -196,7 +196,7 @@ const addUser = [
     // Calculate BMI if height and weight are provided
     const calculatedBmi =
       parsedHeight && parsedWeight ? parsedWeight / parsedHeight ** 2 : 0;
-
+    const role = "user";
     // Default role to "user" if not provided
     const userRole =
       role &&
@@ -326,6 +326,7 @@ const addUser = [
         goal,
         status,
         freezeDate: freezeDate ? new Date(freezeDate) : undefined,
+        fingerprintTemplate: req.body.fingerprintTemplate || null, // Add fingerprint template
         serviceId: service.id, // Use the validated serviceId
         profileImageUrl,
         password: hashedPassword, // Save the hashed password
@@ -527,6 +528,10 @@ const editUser = [
         goal: goal || user.goal,
         status: status || user.status,
         freezeDate: freezeDate ? new Date(freezeDate) : user.freezeDate,
+        fingerprintTemplate:
+          req.body.fingerprintTemplate !== undefined
+            ? req.body.fingerprintTemplate
+            : user.fingerprintTemplate,
         service: serviceId
           ? { connect: { id: serviceId || user.serviceId } } // Correct way to update a relational field
           : undefined,
@@ -864,6 +869,39 @@ const updateNotification = asyncHandler(async (req, res) => {
   });
 });
 
+// Update user's fingerprint template
+const updateFingerprintTemplate = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { templateBase64 } = req.body;
+
+  if (!templateBase64) {
+    res.status(400);
+    throw new Error("Fingerprint template is required");
+  }
+
+  try {
+    const updatedUser = await prisma.user.update({
+      where: { id },
+      data: {
+        fingerprintTemplate: templateBase64,
+        updatedAt: new Date(),
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Fingerprint template updated successfully",
+      data: {
+        userId: updatedUser.id,
+        hasFingerprint: !!updatedUser.fingerprintTemplate,
+      },
+    });
+  } catch (error) {
+    res.status(400);
+    throw new Error(`Failed to update fingerprint template: ${error.message}`);
+  }
+});
+
 module.exports = {
   getUsers,
   getUserDetails,
@@ -875,4 +913,5 @@ module.exports = {
   addUserWorkout,
   addUserMealPlan,
   updateNotification,
+  updateFingerprintTemplate,
 };

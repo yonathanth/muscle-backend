@@ -13,6 +13,7 @@ const {
   addUserWorkout,
   getMyWorkouts,
   getMyMealPlans,
+  updateFingerprintTemplate,
 } = require("../controllers/membersController");
 
 // Public route: Get all users (this could be protected depending on your needs)
@@ -40,6 +41,12 @@ router.post("/:id/meal-plan", authenticate, addUserMealPlan);
 router.post("/:id/workout", authenticate, addUserWorkout);
 router.get("/:id/workouts", authenticate, getMyWorkouts);
 router.get("/:id/meal-plans", authenticate, getMyMealPlans);
+router.patch(
+  "/:id/fingerprint",
+  authenticate,
+  authorize(["admin", "moderator", "root"]),
+  updateFingerprintTemplate
+);
 
 // Admin only route
 router.get(
