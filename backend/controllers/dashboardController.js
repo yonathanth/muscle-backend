@@ -172,25 +172,31 @@ const getPieChartData = asyncHandler(async (req, res) => {
 });
 
 const getAttendanceData = asyncHandler(async (req, res) => {
+  // Set today to the current date at the end of day
   const today = new Date();
+  today.setHours(23, 59, 59, 999);
 
-  // Weekly range (last 7 days)
-  const weekStart = new Date(today);
+  // Weekly range (last 7 days including today)
+  const weekStart = new Date();
   weekStart.setDate(today.getDate() - 6);
+  weekStart.setHours(0, 0, 0, 0);
 
-  // Monthly range (last 30 days)
-  const monthStart = new Date(today);
+  // Monthly range (last 30 days including today)
+  const monthStart = new Date();
   monthStart.setDate(today.getDate() - 29);
+  monthStart.setHours(0, 0, 0, 0);
 
-  // Last 12 months range
-  const yearStart = new Date(today);
-  yearStart.setMonth(today.getMonth() - 11); // Start 12 months ago
+  // Last 12 months range (including current month)
+  const yearStart = new Date();
+  yearStart.setMonth(today.getMonth() - 11);
+  yearStart.setDate(1);
+  yearStart.setHours(0, 0, 0, 0);
 
   // Weekly attendance (last 7 days)
   const weeklyAttendance = await prisma.attendance.groupBy({
-    by: ["date"],
+    by: ["createdAt"],
     where: {
-      date: {
+      createdAt: {
         gte: weekStart,
         lte: today,
       },
@@ -202,9 +208,9 @@ const getAttendanceData = asyncHandler(async (req, res) => {
 
   // Monthly attendance (last 30 days)
   const monthlyAttendance = await prisma.attendance.groupBy({
-    by: ["date"],
+    by: ["createdAt"],
     where: {
-      date: {
+      createdAt: {
         gte: monthStart,
         lte: today,
       },
@@ -216,9 +222,9 @@ const getAttendanceData = asyncHandler(async (req, res) => {
 
   // Yearly attendance (last 12 months)
   const yearlyAttendance = await prisma.attendance.groupBy({
-    by: ["date"],
+    by: ["createdAt"],
     where: {
-      date: {
+      createdAt: {
         gte: yearStart,
         lte: today,
       },
@@ -228,49 +234,62 @@ const getAttendanceData = asyncHandler(async (req, res) => {
     },
   });
 
-  // Generate weekly data (fill missing days with zero counts)
+  // Format data for response, ensuring today is included
   const weeklyData = Array.from({ length: 7 }).map((_, i) => {
     const date = new Date(weekStart);
     date.setDate(weekStart.getDate() + i);
+    const dateString = date.toDateString();
+
     const found = weeklyAttendance.find(
-      (entry) =>
-        entry.date.toISOString().split("T")[0] ===
-        date.toISOString().split("T")[0]
+      (entry) => new Date(entry.createdAt).toDateString() === dateString
     );
+
     return {
       date: date.toISOString().split("T")[0],
       count: found ? found._count.id : 0,
     };
   });
 
-  // Generate monthly data (fill missing days with zero counts)
   const monthlyData = Array.from({ length: 30 }).map((_, i) => {
     const date = new Date(monthStart);
     date.setDate(monthStart.getDate() + i);
+    const dateString = date.toDateString();
+
     const found = monthlyAttendance.find(
-      (entry) =>
-        entry.date.toISOString().split("T")[0] ===
-        date.toISOString().split("T")[0]
+      (entry) => new Date(entry.createdAt).toDateString() === dateString
     );
+
     return {
       date: date.toISOString().split("T")[0],
       count: found ? found._count.id : 0,
     };
   });
 
-  // Generate yearly data (last 12 months)
   const yearlyData = Array.from({ length: 12 }).map((_, i) => {
-    const date = new Date(today.getFullYear(), today.getMonth() - 11 + i, 1); // Last 12 months
-    const found = yearlyAttendance.find((entry) => {
-      const recordDate = new Date(entry.date);
-      return (
-        recordDate.getFullYear() === date.getFullYear() &&
-        recordDate.getMonth() === date.getMonth()
-      );
-    });
+    const date = new Date(yearStart);
+    date.setMonth(yearStart.getMonth() + i);
+    const monthStart = new Date(date.getFullYear(), date.getMonth(), 1);
+    const monthEnd = new Date(
+      date.getFullYear(),
+      date.getMonth() + 1,
+      0,
+      23,
+      59,
+      59,
+      999
+    );
+
+    const monthCount = yearlyAttendance.reduce((sum, entry) => {
+      const entryDate = new Date(entry.createdAt);
+      if (entryDate >= monthStart && entryDate <= monthEnd) {
+        return sum + entry._count.id;
+      }
+      return sum;
+    }, 0);
+
     return {
-      month: date.toLocaleString("default", { month: "short" }), // E.g., "Jan", "Feb"
-      count: found ? found._count.id : 0,
+      month: date.toLocaleString("default", { month: "short" }),
+      count: monthCount,
     };
   });
 
